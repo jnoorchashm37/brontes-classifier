@@ -1,0 +1,13 @@
+[package]
+name = "uniswap-swaps"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+brontes-classifier.workspace = true
+futures = "0.3.28"
+tracing = "0.1.37"
+alloy-primitives.workspace = true
+alloy-sol-types.workspace = true
+paste.workspace = true
+eyre.workspace = true

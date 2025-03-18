@@ -1,0 +1,24 @@
+[workspace]
+members = ["classifier-core", "classifier-macros", "examples/*"]
+
+resolver = "2"
+
+[workspace.dependencies]
+
+# classifier
+brontes-classifier-macros = { path = "./classifier-macros" }
+brontes-classifier = { path = "./classifier-core" }
+
+
+# alloy
+alloy-primitives = "0.8.20"
+alloy-rpc-types = { version = "0.12.5", features = ["jsonrpsee-types", "eth"] }
+alloy-rpc-types-trace = "0.12.5"
+alloy-sol-types = { version = "0.8.23", features = ["json"] }
+
+
+# misc
+futures = "0.3.28"
+tracing = "0.1.37"
+eyre = "0.6"
+paste = "1"
