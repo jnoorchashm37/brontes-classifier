@@ -1,6 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Ident, Index, Path, Token, ext::IdentExt, parenthesized, parse::Parse};
+use syn::{ext::IdentExt, parenthesized, parse::Parse, Ident, Index, Path, Token};
 
 use crate::action_classifier::action_impl::parse_protocol_path;
 
@@ -63,7 +63,7 @@ impl ActionDispatch {
             pub struct #struct_name(#(pub #name,)*);
 
             impl ::brontes_classifier::action::ActionCollection<#output_type> for #struct_name {
-                fn dispatch<DB: ::brontes_classifier::context::DataContext<#protocol_enum_path>, #protocol_enum_path>(
+                fn dispatch<DB: brontes_classifier::context::DataContext<#protocol_enum_path>, #protocol_enum_path>(
                     &self,
                     call_info: ::brontes_classifier::types::CallFrameInfo<'_>,
                     data_ctx: &DB,
@@ -112,7 +112,8 @@ impl Parse for ActionDispatch {
 
         let struct_name: Ident = paren_input.parse()?;
         paren_input.parse::<Token![,]>()?;
-        let protocol_enum_path: Path = parse_protocol_path(&mut &paren_input)?;
+        // let protocol_enum_path: Path = parse_protocol_path(&mut &paren_input)?;
+        let protocol_enum_path: Path = paren_input.parse()?;
 
         input.parse::<Token![=]>()?;
         input.parse::<Token![>]>()?;
