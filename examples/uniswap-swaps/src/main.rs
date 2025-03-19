@@ -11,7 +11,10 @@ use alloy_rpc_types_trace::{
     geth::{GethDebugTracingOptions, GethDefaultTracingOptions},
 };
 use brontes_classifier::{TraceClassifier, types::ClassifiedTx};
-use brontes_tracer::{TracingClient, types::executor::BrontesTaskExecutor};
+use brontes_tracer::{
+    TracingClient,
+    types::executor::{BrontesTaskExecutor, BrontesTaskManager},
+};
 use uniswap_swaps::types::{
     Actions, DataCache, Protocol, UniswapProtocolTokens, UniswapSwapClassifer,
 };
@@ -47,14 +50,12 @@ async fn main() -> eyre::Result<()> {
         (uni_v3_pool_addr, uni_v3_pool),
     ]);
 
+    let manager = BrontesTaskManager::new(tokio::runtime::Handle::current(), true);
+
     let db_path = "/home/data/reth/";
     let classifier = UniswapSwapTracer {
         data_cache,
-        tracer: TracingClient::new(
-            &Path::new(db_path),
-            1000,
-            BrontesTaskExecutor::current().clone(),
-        ),
+        tracer: TracingClient::new(&Path::new(db_path), 1000, manager.executor()),
     };
 
     let v2_result = classifier
