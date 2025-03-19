@@ -1,4 +1,6 @@
-use crate::{context::DataContext, types::CallFrameInfo};
+use brontes_tracer::types::CallFrameInfo;
+
+use crate::context::DataContext;
 use std::fmt::Debug;
 
 pub trait ActionCollection: Default + Sync + Send {

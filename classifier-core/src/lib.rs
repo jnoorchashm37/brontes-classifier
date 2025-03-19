@@ -6,27 +6,40 @@ use action::ActionCollection;
 use alloy_primitives::Log;
 use alloy_rpc_types_trace::parity::Action;
 use alloy_rpc_types_trace::parity::CallType;
-use alloy_rpc_types_trace::parity::TraceResultsWithTransactionHash;
 pub use brontes_classifier_macros::{action_dispatch, action_impl};
+use brontes_tracer::TracingClient;
+use brontes_tracer::types::TransactionTraceWithLogs;
+use brontes_tracer::types::TxTrace;
 use context::DataContext;
 use types::ClassifiedBlock;
 use types::ClassifiedTrace;
 use types::ClassifiedTx;
-use types::FullTransactionTraceWithLogs;
-use types::TransactionTraceWithLogs;
 use types::collect_delegated_traces;
 
+#[allow(async_fn_in_trait)]
 pub trait TraceClassifier<A: ActionCollection> {
     type DataProvider: DataContext<A::ProtocolContext>;
 
-    fn provider(&self) -> &Self::DataProvider;
+    fn data_provider(&self) -> &Self::DataProvider;
 
-    fn classify_block(
+    fn eth_provider(&self) -> &TracingClient;
+
+    async fn classify_block(
         &self,
         block_number: u64,
-        block_trace: Vec<TraceResultsWithTransactionHash>,
-    ) -> ClassifiedBlock<A::DispatchOut> {
-        let transactions = block_trace
+    ) -> eyre::Result<ClassifiedBlock<A::DispatchOut>> {
+        let tracer = self.eth_provider();
+        let Some(tx_traces) = tracer
+            .replay_block_transactions_with_inspector(block_number.into())
+            .await?
+        else {
+            return Ok(ClassifiedBlock {
+                block_number,
+                transactions: Vec::new(),
+            });
+        };
+
+        let transactions = tx_traces
             .into_iter()
             .enumerate()
             .map(|(tx_idx, tx_trace)| {
@@ -34,23 +47,22 @@ pub trait TraceClassifier<A: ActionCollection> {
             })
             .collect::<Vec<_>>();
 
-        ClassifiedBlock {
+        Ok(ClassifiedBlock {
             block_number,
             transactions,
-        }
+        })
     }
 
     fn classify_transaction(
         &self,
         block_number: u64,
         tx_idx: u64,
-        trace: TraceResultsWithTransactionHash,
+        trace: TxTrace,
     ) -> ClassifiedTx<A::DispatchOut> {
-        let tx_hash = trace.transaction_hash;
+        let tx_hash = trace.tx_hash;
 
-        let full_traces = FullTransactionTraceWithLogs::new(trace, vec![]);
-        let inner_traces = full_traces
-            .tx_traces
+        let inner_traces = trace
+            .trace
             .iter()
             .enumerate()
             .map(|(trace_idx, inner_trace)| {
@@ -58,7 +70,7 @@ pub trait TraceClassifier<A: ActionCollection> {
                     block_number,
                     tx_idx as u64,
                     inner_trace.clone(),
-                    &full_traces.tx_traces,
+                    &trace.trace,
                 );
 
                 ClassifiedTrace {
@@ -110,6 +122,6 @@ pub trait TraceClassifier<A: ActionCollection> {
             }
         }
 
-        A::default().dispatch(call_info, self.provider(), block_number, tx_idx)
+        A::default().dispatch(call_info, self.data_provider(), block_number, tx_idx)
     }
 }

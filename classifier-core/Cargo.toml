@@ -8,6 +8,7 @@ edition = "2024"
 
 # classifier
 brontes-classifier-macros.workspace = true
+brontes-tracer.workspace = true
 
 # alloy
 alloy-primitives.workspace = true
