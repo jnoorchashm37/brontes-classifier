@@ -52,7 +52,7 @@ async fn main() -> eyre::Result<()> {
 
     let manager = BrontesTaskManager::new(tokio::runtime::Handle::current(), true);
 
-    let db_path = "/home/data/reth/";
+    let db_path = "/home/data/reth/db";
     let classifier = UniswapSwapTracer {
         data_cache,
         tracer: TracingClient::new(&Path::new(db_path), 1000, manager.executor()),
