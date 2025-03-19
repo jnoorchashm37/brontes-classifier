@@ -38,8 +38,7 @@ async fn main() -> eyre::Result<()> {
 
     let classifier = UniswapSwapTracer(data_cache);
 
-    let eth_url = "ws://34.86.106.7:8546";
-    // let eth_url = "ws://0.0.0.0:0000";
+    let eth_url = "ws://0.0.0.0:0000";
     let provider = RootProvider::<Ethereum>::connect(eth_url).await?;
 
     let v2_result = classifier
