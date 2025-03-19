@@ -11,3 +11,10 @@ alloy-primitives.workspace = true
 alloy-sol-types.workspace = true
 paste.workspace = true
 eyre.workspace = true
+alloy-provider = { version = "0.12.5", features = [
+    "pubsub",
+    "ws",
+    "trace-api",
+    "debug-api",
+] }
+tokio = { version = "1", features = ["full"] }

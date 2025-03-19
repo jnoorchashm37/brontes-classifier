@@ -37,14 +37,14 @@ impl ToTokens for ClosureDispatch {
 
         tokens.extend(quote!(
             let fixed_fields = call_info.get_fixed_fields();
-            let result = (#closure)
+            (#closure)
             (
                 fixed_fields,
                 #call_data
                 #return_data
                 #log_data
-                db_tx
-            )?
+                db_ctx
+            )
         ))
     }
 }

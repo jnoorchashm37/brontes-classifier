@@ -11,7 +11,7 @@ use super::{ACTION_SIG_NAME, data_preparation::CallDataParsing, logs::LogConfig}
 
 pub struct ActionMacro {
     output_type: Ident,
-    protocol_enum_path: Path,
+    protocol_enum: Ident,
     // required for all
     protocol_path: Path,
     path_to_call: Path,
@@ -34,7 +34,7 @@ impl ActionMacro {
     pub fn expand(self) -> syn::Result<TokenStream> {
         let Self {
             output_type,
-            protocol_enum_path,
+            protocol_enum,
             exchange_name_w_call,
             protocol_path,
             action_type,
@@ -75,9 +75,9 @@ impl ActionMacro {
         call.value_mut().ident = Ident::new(&solidity, call.span());
         return_import.segments.push(call.into_value());
 
-        let combined_output = quote!(#output_type::#action_type(result?));
+        let combined_output = quote! { #output_type::#action_type(result) };
 
-        Ok(quote! {
+        Ok(quote!(
             #[allow(unused_imports)]
             use #path_to_call;
             #[allow(unused_imports)]
@@ -98,19 +98,22 @@ impl ActionMacro {
             #[derive(Debug, Default)]
             pub struct #exchange_name_w_call;
 
-            impl ::brontes_classifier::action::IntoAction<#output_type> for #exchange_name_w_call {
-                fn decode_call_trace<DB: ::brontes_classifier::context::DataContext<#protocol_enum_path>, #protocol_enum_path>(
+            impl ::brontes_classifier::action::IntoAction for #exchange_name_w_call {
+                type DecodeOut = #output_type;
+                type ProtocolContext = #protocol_enum;
+
+                fn decode_call_trace<DB: ::brontes_classifier::context::DataContext<#protocol_enum>>(
                     &self,
                     call_info: ::brontes_classifier::types::CallFrameInfo<'_>,
                     block: u64,
                     tx_idx: u64,
-                    db_tx: &DB
+                    db_ctx: &DB
                     ) -> ::eyre::Result<#output_type> {
-                    #call_data
-                    Ok(#combined_output)
+                    #call_data.map(|result| #combined_output)
+
                 }
             }
-        })
+        ))
     }
 }
 
@@ -118,9 +121,9 @@ impl Parse for ActionMacro {
     fn parse(mut input: syn::parse::ParseStream) -> syn::Result<Self> {
         let content;
         parenthesized!(content in input);
-        let protocol_enum_path = parse_protocol_path(&mut &content)?;
+        let protocol_enum = content.parse()?;
         content.parse::<Token![,]>()?;
-        let output_type = content.parse::<Ident>()?;
+        let output_type = content.parse()?;
 
         input.parse::<Token![,]>()?;
         let protocol_path = parse_protocol_path(&mut input)?;
@@ -155,7 +158,7 @@ impl Parse for ActionMacro {
 
         Ok(Self {
             output_type,
-            protocol_enum_path,
+            protocol_enum,
             path_to_call,
             give_returns: return_data,
             log_types: possible_logs,
@@ -238,12 +241,12 @@ pub fn parse_protocol_path(input: &mut syn::parse::ParseStream) -> syn::Result<P
         )
     })?;
 
-    // if protocol_path.segments.len() < 2 {
-    //     return Err(syn::Error::new(
-    //         protocol_path.span(),
-    //         "incorrect path, Should be Protocol::<ProtocolVarient>",
-    //     ));
-    // }
+    if protocol_path.segments.len() < 2 {
+        return Err(syn::Error::new(
+            protocol_path.span(),
+            "incorrect path, Should be Protocol::<ProtocolVarient>",
+        ));
+    }
 
     // let should_protocol = &protocol_path.segments[protocol_path.segments.len() - 2].ident;
     // if !should_protocol.to_string().starts_with("Protocol") {

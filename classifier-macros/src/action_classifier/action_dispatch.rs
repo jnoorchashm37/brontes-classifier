@@ -1,8 +1,6 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{ext::IdentExt, parenthesized, parse::Parse, Ident, Index, Path, Token};
-
-use crate::action_classifier::action_impl::parse_protocol_path;
+use syn::{Ident, Index, Token, parenthesized, parse::Parse};
 
 use super::ACTION_SIG_NAME;
 
@@ -10,17 +8,16 @@ use super::ACTION_SIG_NAME;
 pub struct ActionDispatch {
     // required for all
     struct_name: Ident,
-    protocol_enum_path: Path,
+    protocol_enum: Ident,
     output_type: Ident,
     rest: Vec<Ident>,
 }
 
 impl ActionDispatch {
     pub fn expand(self) -> syn::Result<TokenStream> {
-        // panic!("{self:?}");
         let Self {
             struct_name,
-            protocol_enum_path,
+            protocol_enum,
             output_type,
             rest,
         } = self;
@@ -51,9 +48,9 @@ impl ActionDispatch {
 
         let match_stmt = expand_match_dispatch(&rest, &var_name, i);
 
-        Ok(quote!(
+        let o = quote!(
 
-            impl #protocol_enum_path {
+            impl #protocol_enum {
                 pub const fn to_byte(&self) -> u8 {
                     *self as u8
                 }
@@ -62,8 +59,11 @@ impl ActionDispatch {
             #[derive(Default, Debug)]
             pub struct #struct_name(#(pub #name,)*);
 
-            impl ::brontes_classifier::action::ActionCollection<#output_type> for #struct_name {
-                fn dispatch<DB: brontes_classifier::context::DataContext<#protocol_enum_path>, #protocol_enum_path>(
+            impl ::brontes_classifier::action::ActionCollection for #struct_name {
+                type DispatchOut = #output_type;
+                type ProtocolContext = #protocol_enum;
+
+                fn dispatch<DB: brontes_classifier::context::DataContext<#protocol_enum>>(
                     &self,
                     call_info: ::brontes_classifier::types::CallFrameInfo<'_>,
                     data_ctx: &DB,
@@ -72,10 +72,8 @@ impl ActionDispatch {
                 ) -> Option<#output_type> {
 
 
-                    let protocol_fetched: #protocol_enum_path =
-                        ::brontes_classifier::context::DataContext::get_protocol(data_ctx, call_info.target_address)
-                        // data_ctx.get_protocol(call_info.target_address)
-                        .ok()?;
+                    let protocol_fetched: #protocol_enum =
+                        ::brontes_classifier::context::DataContext::get_protocol(data_ctx, call_info.target_address).ok()?;
                     let protocol_byte = protocol_fetched.to_byte();
 
                     if call_info.call_data.len() < 4 {
@@ -101,7 +99,9 @@ impl ActionDispatch {
 
                 }
             }
-        ))
+        );
+
+        Ok(o)
     }
 }
 
@@ -112,8 +112,7 @@ impl Parse for ActionDispatch {
 
         let struct_name: Ident = paren_input.parse()?;
         paren_input.parse::<Token![,]>()?;
-        // let protocol_enum_path: Path = parse_protocol_path(&mut &paren_input)?;
-        let protocol_enum_path: Path = paren_input.parse()?;
+        let protocol_enum: Ident = paren_input.parse()?;
 
         input.parse::<Token![=]>()?;
         input.parse::<Token![>]>()?;
@@ -135,7 +134,7 @@ impl Parse for ActionDispatch {
 
         Ok(Self {
             rest,
-            protocol_enum_path,
+            protocol_enum,
             output_type,
             struct_name,
         })
@@ -152,7 +151,7 @@ fn expand_match_dispatch(
         #(
             #var_name => {
                 let target_address = call_info.target_address;
-                ::brontes_classifier::action::IntoAction::decode_call_trace::<DB, _>(
+                ::brontes_classifier::action::IntoAction::decode_call_trace(
                         &self.#var_idx,
                         call_info,
                         block,
