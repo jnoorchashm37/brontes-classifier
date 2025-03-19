@@ -1,6 +1,17 @@
+use std::path::Path;
+
 use alloy_primitives::{TxHash, address, b256};
-use alloy_provider::{RootProvider, ext::TraceApi, network::Ethereum};
+use alloy_provider::{
+    Provider, RootProvider,
+    ext::{DebugApi, TraceApi},
+    network::Ethereum,
+};
+use alloy_rpc_types_trace::{
+    common::TraceResult,
+    geth::{GethDebugTracingOptions, GethDefaultTracingOptions},
+};
 use brontes_classifier::{TraceClassifier, types::ClassifiedTx};
+use brontes_tracer::{TracingClient, types::executor::BrontesTaskExecutor};
 use uniswap_swaps::types::{
     Actions, DataCache, Protocol, UniswapProtocolTokens, UniswapSwapClassifer,
 };
@@ -36,38 +47,41 @@ async fn main() -> eyre::Result<()> {
         (uni_v3_pool_addr, uni_v3_pool),
     ]);
 
-    let classifier = UniswapSwapTracer(data_cache);
-
-    let eth_url = "ws://0.0.0.0:0000";
-    let provider = RootProvider::<Ethereum>::connect(eth_url).await?;
+    let db_path = "/home/data/reth/";
+    let classifier = UniswapSwapTracer {
+        data_cache,
+        tracer: TracingClient::new(
+            &Path::new(db_path),
+            1000,
+            BrontesTaskExecutor::current().clone(),
+        ),
+    };
 
     let v2_result = classifier
-        .get_actions_for_tx_hash(&provider, uni_v2_block_number, uni_v2_tx_hash)
+        .get_actions_for_tx_hash(uni_v2_block_number, uni_v2_tx_hash)
         .await?;
 
     println!("V2:\n{v2_result:?}\n\n");
 
     let v3_result = classifier
-        .get_actions_for_tx_hash(&provider, uni_v3_block_number, uni_v3_tx_hash)
+        .get_actions_for_tx_hash(uni_v3_block_number, uni_v3_tx_hash)
         .await?;
     println!("V3:\n{v3_result:?}\n\n");
     Ok(())
 }
 
-struct UniswapSwapTracer(DataCache);
+struct UniswapSwapTracer {
+    data_cache: DataCache,
+    tracer: TracingClient,
+}
 
 impl UniswapSwapTracer {
     async fn get_actions_for_tx_hash(
         &self,
-        provider: &RootProvider,
         block_number: u64,
         tx_hash_to_get: TxHash,
     ) -> eyre::Result<ClassifiedTx<Actions>> {
-        let block_trace = provider
-            .trace_replay_block_transactions(block_number.into())
-            .await?;
-
-        let classifed_block = self.classify_block(block_number, block_trace);
+        let classifed_block = self.classify_block(block_number).await?;
         let classified_txs = classifed_block
             .transactions
             .into_iter()
@@ -83,7 +97,11 @@ impl UniswapSwapTracer {
 impl TraceClassifier<UniswapSwapClassifer> for UniswapSwapTracer {
     type DataProvider = DataCache;
 
-    fn provider(&self) -> &Self::DataProvider {
-        &self.0
+    fn data_provider(&self) -> &Self::DataProvider {
+        &self.data_cache
+    }
+
+    fn eth_provider(&self) -> &TracingClient {
+        &self.tracer
     }
 }
