@@ -1,10 +1,6 @@
 use alloy_primitives::{TxHash, address, b256};
-use alloy_provider::{
-    RootProvider,
-    ext::{DebugApi, TraceApi},
-    network::Ethereum,
-};
-use brontes_classifier::{TraceClassifier, types::FullTransactionTraceWithLogs};
+use alloy_provider::{RootProvider, ext::TraceApi, network::Ethereum};
+use brontes_classifier::{TraceClassifier, types::ClassifiedTx};
 use uniswap_swaps::types::{
     Actions, DataCache, Protocol, UniswapProtocolTokens, UniswapSwapClassifer,
 };
@@ -42,27 +38,20 @@ async fn main() -> eyre::Result<()> {
 
     let classifier = UniswapSwapTracer(data_cache);
 
-    let eth_url = "ws://0.0.0.0:0000";
+    let eth_url = "ws://34.86.106.7:8546";
+    // let eth_url = "ws://0.0.0.0:0000";
     let provider = RootProvider::<Ethereum>::connect(eth_url).await?;
 
     let v2_result = classifier
         .get_actions_for_tx_hash(&provider, uni_v2_block_number, uni_v2_tx_hash)
         .await?;
 
-    for action in v2_result {
-        println!("{action:?}")
-    }
-    println!();
+    println!("V2:\n{v2_result:?}\n\n");
 
     let v3_result = classifier
         .get_actions_for_tx_hash(&provider, uni_v3_block_number, uni_v3_tx_hash)
         .await?;
-
-    for action in v3_result {
-        println!("{action:?}")
-    }
-    println!();
-
+    println!("V3:\n{v3_result:?}\n\n");
     Ok(())
 }
 
@@ -74,37 +63,21 @@ impl UniswapSwapTracer {
         provider: &RootProvider,
         block_number: u64,
         tx_hash_to_get: TxHash,
-    ) -> eyre::Result<Vec<Actions>> {
-        let actions = provider
+    ) -> eyre::Result<ClassifiedTx<Actions>> {
+        let block_trace = provider
             .trace_replay_block_transactions(block_number.into())
-            .await?
+            .await?;
+
+        let classifed_block = self.classify_block(block_number, block_trace);
+        let classified_txs = classifed_block
+            .transactions
             .into_iter()
-            .enumerate()
-            .filter(|(_, trace)| trace.transaction_hash == tx_hash_to_get)
-            .map(|(tx_idx, trace)| {
-                let inner_traces = FullTransactionTraceWithLogs::new(block_number, trace);
-                let inner_actions = inner_traces
-                    .tx_traces
-                    .iter()
-                    .flat_map(|inner_trace| {
-                        self.classify_call(
-                            block_number,
-                            tx_idx as u64,
-                            inner_trace.clone(),
-                            &inner_traces.tx_traces,
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                (inner_traces.tx_hash, inner_actions)
-            })
+            .filter(|tx| tx.tx_hash == tx_hash_to_get && tx.traces.len() != 0)
             .collect::<Vec<_>>();
 
-        assert_eq!(actions.len(), 1);
+        assert_ne!(classified_txs.len(), 0);
 
-        let (action_tx_hash, tx_actions) = actions.first().unwrap();
-        assert_eq!(*action_tx_hash, tx_hash_to_get);
-
-        Ok(tx_actions.clone())
+        Ok(classified_txs.first().unwrap().clone())
     }
 }
 

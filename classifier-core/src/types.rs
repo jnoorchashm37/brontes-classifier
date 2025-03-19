@@ -4,6 +4,26 @@ use alloy_rpc_types_trace::parity::{
 };
 
 #[derive(Debug, Clone)]
+pub struct ClassifiedBlock<A> {
+    pub block_number: u64,
+    pub transactions: Vec<ClassifiedTx<A>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClassifiedTx<A> {
+    pub tx_hash: TxHash,
+    pub tx_idx: u64,
+    pub traces: Vec<ClassifiedTrace<A>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClassifiedTrace<A> {
+    pub classified_data: Option<A>,
+    pub trace_idx: u64,
+    pub msg_sender: Address,
+}
+
+#[derive(Debug, Clone)]
 pub struct CallFrameInfo<'a> {
     pub trace_idx: u64,
     pub call_data: Bytes,
@@ -39,16 +59,14 @@ pub struct CallInfo {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FullTransactionTraceWithLogs {
-    pub block_number: u64,
     pub tx_hash: TxHash,
     pub tx_traces: Vec<TransactionTraceWithLogs>,
 }
 
 impl FullTransactionTraceWithLogs {
-    pub fn new(block_number: u64, trace_results: TraceResultsWithTransactionHash) -> Self {
+    pub fn new(trace_results: TraceResultsWithTransactionHash, logs: Vec<Log>) -> Self {
         if trace_results.full_trace.trace.is_empty() {
             return FullTransactionTraceWithLogs {
-                block_number,
                 tx_hash: trace_results.transaction_hash,
                 tx_traces: Vec::new(),
             };
@@ -57,14 +75,13 @@ impl FullTransactionTraceWithLogs {
         let traces_with_senders = parse_all_msg_senders(trace_results.full_trace.trace);
 
         FullTransactionTraceWithLogs {
-            block_number,
             tx_hash: trace_results.transaction_hash,
             tx_traces: traces_with_senders
                 .into_iter()
                 .enumerate()
                 .map(|(idx, (trace, msg_sender))| TransactionTraceWithLogs {
                     trace,
-                    logs: vec![],
+                    logs: logs.clone(),
                     msg_sender,
                     trace_idx: idx as u64,
                 })

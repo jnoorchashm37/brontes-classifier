@@ -6,8 +6,13 @@ use action::ActionCollection;
 use alloy_primitives::Log;
 use alloy_rpc_types_trace::parity::Action;
 use alloy_rpc_types_trace::parity::CallType;
+use alloy_rpc_types_trace::parity::TraceResultsWithTransactionHash;
 pub use brontes_classifier_macros::{action_dispatch, action_impl};
 use context::DataContext;
+use types::ClassifiedBlock;
+use types::ClassifiedTrace;
+use types::ClassifiedTx;
+use types::FullTransactionTraceWithLogs;
 use types::TransactionTraceWithLogs;
 use types::collect_delegated_traces;
 
@@ -16,9 +21,64 @@ pub trait TraceClassifier<A: ActionCollection> {
 
     fn provider(&self) -> &Self::DataProvider;
 
-    fn classify_call(
+    fn classify_block(
         &self,
-        block: u64,
+        block_number: u64,
+        block_trace: Vec<TraceResultsWithTransactionHash>,
+    ) -> ClassifiedBlock<A::DispatchOut> {
+        let transactions = block_trace
+            .into_iter()
+            .enumerate()
+            .map(|(tx_idx, tx_trace)| {
+                self.classify_transaction(block_number, tx_idx as u64, tx_trace)
+            })
+            .collect::<Vec<_>>();
+
+        ClassifiedBlock {
+            block_number,
+            transactions,
+        }
+    }
+
+    fn classify_transaction(
+        &self,
+        block_number: u64,
+        tx_idx: u64,
+        trace: TraceResultsWithTransactionHash,
+    ) -> ClassifiedTx<A::DispatchOut> {
+        let tx_hash = trace.transaction_hash;
+
+        let full_traces = FullTransactionTraceWithLogs::new(trace, vec![]);
+        let inner_traces = full_traces
+            .tx_traces
+            .iter()
+            .enumerate()
+            .map(|(trace_idx, inner_trace)| {
+                let classified_data = self.classify_transaction_trace(
+                    block_number,
+                    tx_idx as u64,
+                    inner_trace.clone(),
+                    &full_traces.tx_traces,
+                );
+
+                ClassifiedTrace {
+                    trace_idx: trace_idx as u64,
+                    classified_data,
+                    msg_sender: inner_trace.msg_sender,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        ClassifiedTx {
+            tx_hash,
+            traces: inner_traces,
+            tx_idx,
+        }
+    }
+
+    fn classify_transaction_trace(
+        &self,
+        block_number: u64,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         full_trace: &[TransactionTraceWithLogs],
@@ -50,6 +110,6 @@ pub trait TraceClassifier<A: ActionCollection> {
             }
         }
 
-        A::default().dispatch(call_info, self.provider(), block, tx_idx)
+        A::default().dispatch(call_info, self.provider(), block_number, tx_idx)
     }
 }
