@@ -68,7 +68,7 @@ pub trait TraceClassifier<A: ActionCollection> {
             .map(|(trace_idx, inner_trace)| {
                 let classified_data = self.classify_transaction_trace(
                     block_number,
-                    tx_idx as u64,
+                    tx_idx,
                     inner_trace.clone(),
                     &trace.trace,
                 );

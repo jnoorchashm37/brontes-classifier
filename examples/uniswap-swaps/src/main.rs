@@ -44,7 +44,7 @@ async fn main() -> eyre::Result<()> {
     let db_path = "/home/data/reth/db";
     let classifier = UniswapSwapTracer {
         data_cache,
-        tracer: TracingClient::new(&Path::new(db_path), 1000, manager.executor()),
+        tracer: TracingClient::new(Path::new(db_path), 1000, manager.executor()),
     };
 
     let v2_result = classifier
@@ -75,7 +75,7 @@ impl UniswapSwapTracer {
         let classified_txs = classifed_block
             .transactions
             .into_iter()
-            .filter(|tx| tx.tx_hash == tx_hash_to_get && tx.traces.len() != 0)
+            .filter(|tx| tx.tx_hash == tx_hash_to_get && !tx.traces.is_empty())
             .collect::<Vec<_>>();
 
         assert_ne!(classified_txs.len(), 0);
