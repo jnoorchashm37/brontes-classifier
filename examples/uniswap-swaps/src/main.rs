@@ -1,20 +1,9 @@
 use std::path::Path;
 
 use alloy_primitives::{TxHash, address, b256};
-use alloy_provider::{
-    Provider, RootProvider,
-    ext::{DebugApi, TraceApi},
-    network::Ethereum,
-};
-use alloy_rpc_types_trace::{
-    common::TraceResult,
-    geth::{GethDebugTracingOptions, GethDefaultTracingOptions},
-};
+
 use brontes_classifier::{TraceClassifier, types::ClassifiedTx};
-use brontes_tracer::{
-    TracingClient,
-    types::executor::{BrontesTaskExecutor, BrontesTaskManager},
-};
+use brontes_tracer::{TracingClient, types::executor::BrontesTaskManager};
 use uniswap_swaps::types::{
     Actions, DataCache, Protocol, UniswapProtocolTokens, UniswapSwapClassifer,
 };
