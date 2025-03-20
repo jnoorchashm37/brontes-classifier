@@ -172,7 +172,7 @@ fn expand_match_dispatch(
             _ => {
             let target_address = call_info.target_address;
             ::tracing::debug!(
-                "no inspector for function selector: {:?} with contract address: {:?}",
+                target: "classifier-macro", "no inspector for function selector: {:?} with contract address: {:?}",
                 hex_selector,
                 target_address.0,
             );
