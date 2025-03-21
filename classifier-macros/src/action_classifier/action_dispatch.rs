@@ -68,6 +68,7 @@ impl ActionDispatch {
                     call_info: ::brontes_classifier::types::CallFrameInfo<'_>,
                     data_ctx: &DB,
                     block: u64,
+                    tx_hash: alloy_primitives::TxHash,
                     tx_idx: u64,
                 ) -> Option<#output_type> {
 
@@ -158,7 +159,7 @@ fn expand_match_dispatch(
                         tx_idx,
                         data_ctx
                     ).inspect_err(|e| {
-                        ::tracing::warn!(error=%e,
+                        ::tracing::warn!(error=%e, ?tx_hash,
                             "classifier: {} failed on function sig: {:?} for address: {:?}",
                             stringify!(#reg_name),
                             hex_selector,

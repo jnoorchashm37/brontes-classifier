@@ -1,3 +1,4 @@
+use alloy_primitives::TxHash;
 use brontes_tracer::types::CallFrameInfo;
 
 use crate::context::DataContext;
@@ -12,6 +13,7 @@ pub trait ActionCollection: Default + Sync + Send {
         call_info: CallFrameInfo<'_>,
         db_ctx: &DB,
         block: u64,
+        tx_hash: TxHash,
         tx_idx: u64,
     ) -> Option<Self::DispatchOut>;
 }

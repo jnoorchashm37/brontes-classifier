@@ -4,6 +4,7 @@ pub mod types;
 
 use action::ActionCollection;
 use alloy_primitives::Log;
+use alloy_primitives::TxHash;
 use alloy_rpc_types_trace::parity::Action;
 use alloy_rpc_types_trace::parity::CallType;
 pub use brontes_classifier_macros::{action_dispatch, action_impl};
@@ -68,6 +69,7 @@ pub trait TraceClassifier<A: ActionCollection> {
             .map(|(trace_idx, inner_trace)| {
                 let classified_data = self.classify_transaction_trace(
                     block_number,
+                    tx_hash,
                     tx_idx,
                     inner_trace.clone(),
                     &trace.trace,
@@ -91,6 +93,7 @@ pub trait TraceClassifier<A: ActionCollection> {
     fn classify_transaction_trace(
         &self,
         block_number: u64,
+        tx_hash: TxHash,
         tx_idx: u64,
         trace: TransactionTraceWithLogs,
         full_trace: &[TransactionTraceWithLogs],
@@ -122,6 +125,12 @@ pub trait TraceClassifier<A: ActionCollection> {
             }
         }
 
-        A::default().dispatch(call_info, self.data_provider(), block_number, tx_idx)
+        A::default().dispatch(
+            call_info,
+            self.data_provider(),
+            block_number,
+            tx_hash,
+            tx_idx,
+        )
     }
 }
