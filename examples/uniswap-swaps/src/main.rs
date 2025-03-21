@@ -24,7 +24,7 @@ async fn main() -> eyre::Result<()> {
 
     let uni_v3_block_number = 22077285;
     let uni_v3_tx_hash =
-        b256!("0x7d48589e17e77b983a399390bed4e2d30c8d6fec1285abed9e6889e808fa910d");
+        b256!("0xb230102d52a19ede8e48413819399b89253847fe4a1eba40d2eca73b08148a1e");
     let uni_v3_pool_addr = address!("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640");
     let uni_v3_pool = UniswapProtocolTokens {
         protocol: Protocol::UniswapV3,
