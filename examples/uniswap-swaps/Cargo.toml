@@ -13,24 +13,23 @@ alloy-sol-types.workspace = true
 alloy-rpc-types-trace.workspace = true
 paste.workspace = true
 eyre.workspace = true
-alloy-provider = { version = "0.12.5", features = [
+alloy-provider = { version = "0.12.6", features = [
     "pubsub",
     "ws",
     "trace-api",
     "debug-api",
 ] }
 tokio = { version = "1", features = ["full"] }
+
 # revm
-revm = { version = "20.0.0-alpha.5", features = [
+revm = { version = "20.0.0-alpha.7", features = [
     "std",
     "secp256k1",
     "optional_balance_check",
     "optional_block_gas_limit",
     "alloydb",
 ], default-features = false }
-revm-primitives = { version = "16.0.0-alpha.3", features = [
-    "std",
-], default-features = false }
-revm-inspector = { version = "1.0.0-alpha.5", default-features = false }
-revm-inspectors = "0.17.0-alpha.1"
-alloy-evm = { version = "0.1.0-alpha.1", default-features = false }
+revm-bytecode = { version = "1.0.0-alpha.5", default-features = false }
+revm-database = { version = "1.0.0-alpha.5", default-features = false }
+revm-state = { version = "1.0.0-alpha.5", default-features = false }
+revm-primitives = { version = "16.0.0-alpha.5", default-features = false }
